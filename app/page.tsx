@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { motion } from "framer-motion"
-import { Sparkles, Star, RefreshCw } from "lucide-react"
-import { getKids, registerKid } from "./actions"
+import { Sparkles, Star, RefreshCw, AlertCircle, Database } from "lucide-react"
+import { getKids, registerKid, checkDatabaseSetup } from "./actions"
 import type { Kid } from "@/lib/supabase"
 
 export default function KidsRegistration() {
@@ -20,20 +20,27 @@ export default function KidsRegistration() {
   const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [isPending, startTransition] = useTransition()
+  const [databaseStatus, setDatabaseStatus] = useState({
+    tablesExist: false,
+    hasData: false,
+    kidsCount: 0,
+    nextRegistrationNumber: 1,
+  })
 
-  // Load kids on component mount
+  // Load kids and check database setup on component mount
   useEffect(() => {
-    loadKids()
+    loadData()
   }, [])
 
-  const loadKids = async () => {
+  const loadData = async () => {
     setIsLoading(true)
     try {
-      const kidsData = await getKids()
+      const [kidsData, dbStatus] = await Promise.all([getKids(), checkDatabaseSetup()])
       setKids(kidsData)
+      setDatabaseStatus(dbStatus)
     } catch (error) {
-      console.error("Error loading kids:", error)
-      setError("Failed to load registrations")
+      console.error("Error loading data:", error)
+      setError("Failed to load data")
     } finally {
       setIsLoading(false)
     }
@@ -59,8 +66,8 @@ export default function KidsRegistration() {
         setNickname("")
         setAge(8)
         setSex(null)
-        // Reload kids list
-        await loadKids()
+        // Reload data
+        await loadData()
       }
     })
   }
@@ -71,6 +78,80 @@ export default function KidsRegistration() {
         <div className="text-2xl text-purple-600 font-bold flex items-center gap-2">
           <RefreshCw className="h-6 w-6 animate-spin" />
           Loading...
+        </div>
+      </div>
+    )
+  }
+
+  // Show setup instructions if database tables don't exist
+  if (!databaseStatus.tablesExist) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-100 to-blue-100 p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
+          <header className="text-center mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold text-purple-600 mb-2">OpenSouthKids 2025</h1>
+            <div className="text-xl text-blue-500 flex items-center justify-center gap-2">
+              <Database className="h-5 w-5" />
+              <span>Database Setup Required</span>
+            </div>
+          </header>
+
+          <div className="bg-white rounded-3xl p-8 shadow-lg border-4 border-orange-300">
+            <div className="flex items-center gap-4 mb-6">
+              <AlertCircle className="h-8 w-8 text-orange-500" />
+              <h2 className="text-2xl font-bold text-orange-600">Setup Required</h2>
+            </div>
+
+            <div className="space-y-4 text-gray-700">
+              <p className="text-lg">The database tables haven't been created yet. Please follow these steps:</p>
+
+              <div className="bg-blue-50 p-6 rounded-xl border-2 border-blue-200">
+                <h3 className="font-bold text-blue-800 mb-3">Step 1: Create Supabase Account</h3>
+                <ol className="list-decimal list-inside space-y-2 text-blue-700">
+                  <li>
+                    Go to{" "}
+                    <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="underline">
+                      supabase.com
+                    </a>
+                  </li>
+                  <li>Create a free account and new project</li>
+                  <li>Copy your project URL and anon key</li>
+                </ol>
+              </div>
+
+              <div className="bg-green-50 p-6 rounded-xl border-2 border-green-200">
+                <h3 className="font-bold text-green-800 mb-3">Step 2: Set Environment Variables</h3>
+                <div className="space-y-2 text-green-700">
+                  <p>Add these to your environment variables:</p>
+                  <code className="block bg-green-100 p-2 rounded text-sm">
+                    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+                    <br />
+                    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+                  </code>
+                </div>
+              </div>
+
+              <div className="bg-purple-50 p-6 rounded-xl border-2 border-purple-200">
+                <h3 className="font-bold text-purple-800 mb-3">Step 3: Run Database Scripts</h3>
+                <p className="text-purple-700 mb-3">In your Supabase SQL editor, run these scripts in order:</p>
+                <div className="space-y-2">
+                  <Button
+                    onClick={() => window.open("https://supabase.com/dashboard/project/_/sql", "_blank")}
+                    className="bg-purple-500 hover:bg-purple-600 text-white"
+                  >
+                    Open Supabase SQL Editor
+                  </Button>
+                </div>
+              </div>
+
+              <div className="text-center pt-4">
+                <Button onClick={loadData} className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 text-lg">
+                  <RefreshCw className="h-5 w-5 mr-2" />
+                  Check Setup Again
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -108,7 +189,7 @@ export default function KidsRegistration() {
               {kids.length} {kids.length === 1 ? "Kid" : "Kids"}
             </h2>
             <Button
-              onClick={loadKids}
+              onClick={loadData}
               variant="outline"
               size="sm"
               className="text-pink-500 border-pink-300 hover:bg-pink-50"
