@@ -2,21 +2,14 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { motion } from "framer-motion"
-import { Sparkles, Star } from "lucide-react"
-
-// Types for our kid registration
-type Kid = {
-  id: string
-  nickname: string
-  age: number
-  sex: "boy" | "girl" | "other"
-  registrationNumber: string
-}
+import { Sparkles, Star, RefreshCw, AlertCircle, Database } from "lucide-react"
+import { getKids, registerKid, checkDatabaseSetup } from "./actions"
+import type { Kid } from "@/lib/supabase"
 
 export default function KidsRegistration() {
   const [kids, setKids] = useState<Kid[]>([])
@@ -24,48 +17,144 @@ export default function KidsRegistration() {
   const [age, setAge] = useState<number>(8)
   const [sex, setSex] = useState<"boy" | "girl" | "other" | null>(null)
   const [error, setError] = useState("")
-  const [registrationCounter, setRegistrationCounter] = useState(1)
+  const [success, setSuccess] = useState("")
+  const [isLoading, setIsLoading] = useState(true)
+  const [isPending, startTransition] = useTransition()
+  const [databaseStatus, setDatabaseStatus] = useState({
+    tablesExist: false,
+    hasData: false,
+    kidsCount: 0,
+    nextRegistrationNumber: 1,
+  })
 
-  // Generate a registration number in the format K250123
-  const generateRegistrationNumber = () => {
-    const date = new Date()
-    const year = date.getFullYear().toString().slice(-2)
-    const month = (date.getMonth() + 1).toString().padStart(2, "0")
-    const day = date.getDate().toString().padStart(2, "0")
-    const counter = registrationCounter.toString().padStart(3, "0")
-    return `K${year}${month}${day}${counter}`
+  // Load kids and check database setup on component mount
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    setIsLoading(true)
+    try {
+      const [kidsData, dbStatus] = await Promise.all([getKids(), checkDatabaseSetup()])
+      setKids(kidsData)
+      setDatabaseStatus(dbStatus)
+    } catch (error) {
+      console.error("Error loading data:", error)
+      setError("Failed to load data")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    // Validate form
-    if (!nickname.trim()) {
-      setError("Please enter your nickname!")
-      return
-    }
-
-    if (!sex) {
-      setError("Please select if you're a boy, girl, or other!")
-      return
-    }
-
-    // Create new kid registration
-    const newKid: Kid = {
-      id: Math.random().toString(36).substring(2, 9),
-      nickname,
-      age,
-      sex,
-      registrationNumber: generateRegistrationNumber(),
-    }
-
-    // Add to list and reset form
-    setKids([...kids, newKid])
-    setRegistrationCounter((prev) => prev + 1)
-    setNickname("")
-    setAge(8)
-    setSex(null)
     setError("")
+    setSuccess("")
+
+    const formData = new FormData()
+    formData.append("nickname", nickname)
+    formData.append("age", age.toString())
+    formData.append("sex", sex || "")
+
+    startTransition(async () => {
+      const result = await registerKid(formData)
+
+      if (result.error) {
+        setError(result.error)
+      } else if (result.success) {
+        setSuccess(`Welcome! Your registration number is ${result.registrationNumber}`)
+        setNickname("")
+        setAge(8)
+        setSex(null)
+        // Reload data
+        await loadData()
+      }
+    })
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-100 to-blue-100 flex items-center justify-center">
+        <div className="text-2xl text-purple-600 font-bold flex items-center gap-2">
+          <RefreshCw className="h-6 w-6 animate-spin" />
+          Loading...
+        </div>
+      </div>
+    )
+  }
+
+  // Show setup instructions if database tables don't exist
+  if (!databaseStatus.tablesExist) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-100 to-blue-100 p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
+          <header className="text-center mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold text-purple-600 mb-2">OpenSouthKids 2025</h1>
+            <div className="text-xl text-blue-500 flex items-center justify-center gap-2">
+              <Database className="h-5 w-5" />
+              <span>Database Setup Required</span>
+            </div>
+          </header>
+
+          <div className="bg-white rounded-3xl p-8 shadow-lg border-4 border-orange-300">
+            <div className="flex items-center gap-4 mb-6">
+              <AlertCircle className="h-8 w-8 text-orange-500" />
+              <h2 className="text-2xl font-bold text-orange-600">Setup Required</h2>
+            </div>
+
+            <div className="space-y-4 text-gray-700">
+              <p className="text-lg">The database tables haven't been created yet. Please follow these steps:</p>
+
+              <div className="bg-blue-50 p-6 rounded-xl border-2 border-blue-200">
+                <h3 className="font-bold text-blue-800 mb-3">Step 1: Create Supabase Account</h3>
+                <ol className="list-decimal list-inside space-y-2 text-blue-700">
+                  <li>
+                    Go to{" "}
+                    <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="underline">
+                      supabase.com
+                    </a>
+                  </li>
+                  <li>Create a free account and new project</li>
+                  <li>Copy your project URL and anon key</li>
+                </ol>
+              </div>
+
+              <div className="bg-green-50 p-6 rounded-xl border-2 border-green-200">
+                <h3 className="font-bold text-green-800 mb-3">Step 2: Set Environment Variables</h3>
+                <div className="space-y-2 text-green-700">
+                  <p>Add these to your environment variables:</p>
+                  <code className="block bg-green-100 p-2 rounded text-sm">
+                    NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+                    <br />
+                    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+                  </code>
+                </div>
+              </div>
+
+              <div className="bg-purple-50 p-6 rounded-xl border-2 border-purple-200">
+                <h3 className="font-bold text-purple-800 mb-3">Step 3: Run Database Scripts</h3>
+                <p className="text-purple-700 mb-3">In your Supabase SQL editor, run these scripts in order:</p>
+                <div className="space-y-2">
+                  <Button
+                    onClick={() => window.open("https://supabase.com/dashboard/project/_/sql", "_blank")}
+                    className="bg-purple-500 hover:bg-purple-600 text-white"
+                  >
+                    Open Supabase SQL Editor
+                  </Button>
+                </div>
+              </div>
+
+              <div className="text-center pt-4">
+                <Button onClick={loadData} className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 text-lg">
+                  <RefreshCw className="h-5 w-5 mr-2" />
+                  Check Setup Again
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -94,10 +183,20 @@ export default function KidsRegistration() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
         {/* Left side: List of registered kids */}
         <div className="bg-white rounded-3xl p-6 shadow-lg border-4 border-yellow-300">
-          <h2 className="text-2xl font-bold text-pink-500 mb-4 flex items-center">
-            <Star className="h-6 w-6 mr-2 text-yellow-400" />
-            {kids.length} {kids.length === 1 ? "Kid" : "Kids"}
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-2xl font-bold text-pink-500 flex items-center">
+              <Star className="h-6 w-6 mr-2 text-yellow-400" />
+              {kids.length} {kids.length === 1 ? "Kid" : "Kids"}
+            </h2>
+            <Button
+              onClick={loadData}
+              variant="outline"
+              size="sm"
+              className="text-pink-500 border-pink-300 hover:bg-pink-50"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
 
           {kids.length === 0 ? (
             <div className="text-center py-10 text-gray-500">No kids registered yet. Be the first one!</div>
@@ -121,7 +220,7 @@ export default function KidsRegistration() {
                       <div className="text-sm text-gray-600">Age: {kid.age}</div>
                     </div>
                     <div className="bg-yellow-100 px-3 py-1 rounded-full text-sm font-mono font-bold text-yellow-800">
-                      {kid.registrationNumber}
+                      {kid.registration_number}
                     </div>
                   </div>
                 </motion.div>
@@ -149,6 +248,7 @@ export default function KidsRegistration() {
                 onChange={(e) => setNickname(e.target.value)}
                 className="mt-2 text-lg h-12 rounded-xl border-2 border-purple-300 focus:border-purple-500"
                 placeholder="Type your nickname here"
+                disabled={isPending}
               />
             </div>
 
@@ -167,6 +267,7 @@ export default function KidsRegistration() {
                     className="w-20 h-8 text-center border-2 border-blue-300"
                     min="1"
                     max="99"
+                    disabled={isPending}
                   />
                 </div>
                 <input
@@ -177,6 +278,7 @@ export default function KidsRegistration() {
                   value={Math.min(15, Math.max(5, age))}
                   onChange={(e) => setAge(Number.parseInt(e.target.value))}
                   className="w-full h-8 accent-blue-500"
+                  disabled={isPending}
                 />
                 <div className="flex justify-between text-sm text-blue-600 mt-1">
                   <span>5</span>
@@ -196,6 +298,7 @@ export default function KidsRegistration() {
                 <Button
                   type="button"
                   onClick={() => setSex("boy")}
+                  disabled={isPending}
                   className={`h-24 rounded-2xl flex flex-col items-center justify-center transition-all ${
                     sex === "boy" ? "bg-blue-500 border-4 border-blue-300" : "bg-blue-100 hover:bg-blue-200"
                   }`}
@@ -207,6 +310,7 @@ export default function KidsRegistration() {
                 <Button
                   type="button"
                   onClick={() => setSex("girl")}
+                  disabled={isPending}
                   className={`h-24 rounded-2xl flex flex-col items-center justify-center transition-all ${
                     sex === "girl" ? "bg-pink-500 border-4 border-pink-300" : "bg-pink-100 hover:bg-pink-200"
                   }`}
@@ -218,6 +322,7 @@ export default function KidsRegistration() {
                 <Button
                   type="button"
                   onClick={() => setSex("other")}
+                  disabled={isPending}
                   className={`h-24 rounded-2xl flex flex-col items-center justify-center transition-all ${
                     sex === "other" ? "bg-purple-500 border-4 border-purple-300" : "bg-purple-100 hover:bg-purple-200"
                   }`}
@@ -228,16 +333,29 @@ export default function KidsRegistration() {
               </div>
             </div>
 
+            {/* Success message */}
+            {success && (
+              <div className="bg-green-100 text-green-600 p-3 rounded-lg text-center font-bold">{success}</div>
+            )}
+
             {/* Error message */}
             {error && <div className="bg-red-100 text-red-600 p-3 rounded-lg text-center">{error}</div>}
 
             {/* Submit button */}
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+            <motion.div whileHover={{ scale: isPending ? 1 : 1.05 }} whileTap={{ scale: isPending ? 1 : 0.95 }}>
               <Button
                 type="submit"
-                className="w-full h-16 text-xl font-bold rounded-xl bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white"
+                disabled={isPending}
+                className="w-full h-16 text-xl font-bold rounded-xl bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white disabled:opacity-50"
               >
-                Register Me! 🎉
+                {isPending ? (
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="h-5 w-5 animate-spin" />
+                    Registering...
+                  </div>
+                ) : (
+                  "Register Me! 🎉"
+                )}
               </Button>
             </motion.div>
           </form>
