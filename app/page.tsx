@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -25,6 +25,46 @@ export default function KidsRegistration() {
   const [sex, setSex] = useState<"boy" | "girl" | "other" | null>(null)
   const [error, setError] = useState("")
   const [registrationCounter, setRegistrationCounter] = useState(1)
+  const [isLoaded, setIsLoaded] = useState(false)
+
+  // Load data from localStorage on component mount
+  useEffect(() => {
+    const savedKids = localStorage.getItem("opensouthkids-registrations")
+    const savedCounter = localStorage.getItem("opensouthkids-counter")
+
+    if (savedKids) {
+      try {
+        const parsedKids = JSON.parse(savedKids)
+        setKids(parsedKids)
+      } catch (error) {
+        console.error("Error parsing saved kids data:", error)
+      }
+    }
+
+    if (savedCounter) {
+      try {
+        const parsedCounter = Number.parseInt(savedCounter, 10)
+        setRegistrationCounter(parsedCounter)
+      } catch (error) {
+        console.error("Error parsing saved counter:", error)
+      }
+    }
+
+    setIsLoaded(true)
+  }, [])
+
+  // Save data to localStorage whenever kids or counter changes
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem("opensouthkids-registrations", JSON.stringify(kids))
+    }
+  }, [kids, isLoaded])
+
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem("opensouthkids-counter", registrationCounter.toString())
+    }
+  }, [registrationCounter, isLoaded])
 
   // Generate a registration number in the format K250123
   const generateRegistrationNumber = () => {
@@ -66,6 +106,15 @@ export default function KidsRegistration() {
     setAge(8)
     setSex(null)
     setError("")
+  }
+
+  // Show loading state while data is being loaded
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-100 to-blue-100 flex items-center justify-center">
+        <div className="text-2xl text-purple-600 font-bold">Loading...</div>
+      </div>
+    )
   }
 
   return (
