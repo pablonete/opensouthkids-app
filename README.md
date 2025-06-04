@@ -1,4 +1,6 @@
-# Kids registration app
+# OpenSouthKids 2025 app
+
+Visit the website: https://v0-kids-registration-app.vercel.app/
 
 *Automatically synced with your [v0.dev](https://v0.dev) deployments*
 
