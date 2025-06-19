@@ -74,8 +74,8 @@ export default function KidsRegistration() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-purple-100 to-blue-100 flex items-center justify-center">
-        <div className="text-2xl text-purple-600 font-bold flex items-center gap-2">
+      <div className="min-h-screen bg-gradient-to-b from-green-100 to-blue-100 flex items-center justify-center">
+        <div className="text-2xl text-green-600 font-bold flex items-center gap-2">
           <RefreshCw className="h-6 w-6 animate-spin" />
           Loading...
         </div>
@@ -86,10 +86,10 @@ export default function KidsRegistration() {
   // Show setup instructions if database tables don't exist
   if (!databaseStatus.tablesExist) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-purple-100 to-blue-100 p-4 md:p-8">
+      <div className="min-h-screen bg-gradient-to-b from-green-100 to-blue-100 p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
           <header className="text-center mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold text-purple-600 mb-2">OpenSouthKids 2025</h1>
+            <h1 className="text-4xl md:text-5xl font-bold text-green-600 mb-2">OpenSouthKids 2025</h1>
             <div className="text-xl text-blue-500 flex items-center justify-center gap-2">
               <Database className="h-5 w-5" />
               <span>Database Setup Required</span>
@@ -158,16 +158,23 @@ export default function KidsRegistration() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-100 to-blue-100 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-b from-green-100 to-blue-100 p-4 md:p-8">
       <header className="text-center mb-8">
-        <motion.h1
-          className="text-4xl md:text-5xl font-bold text-purple-600 mb-2"
-          initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          OpenSouthKids 2025
-        </motion.h1>
+        <div className="flex items-center justify-center gap-4 mb-2">
+          <img
+            src="/placeholder.svg?height=60&width=60"
+            alt="OpenSouthCode Logo"
+            className="h-12 w-12 md:h-15 md:w-15"
+          />
+          <motion.h1
+            className="text-4xl md:text-5xl font-bold text-green-600"
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            OpenSouthKids 2025
+          </motion.h1>
+        </div>
         <motion.div
           className="text-xl text-blue-500 flex items-center justify-center gap-2"
           initial={{ y: -20, opacity: 0 }}
