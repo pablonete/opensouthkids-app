@@ -236,7 +236,7 @@ export default function KidsRegistration() {
           transition={{ delay: 0.3, duration: 0.5 }}
         >
           <Sparkles className="h-5 w-5" />
-          <span>Sign In Here!</span>
+          <span>This is public, do not write your full name</span>
           <Sparkles className="h-5 w-5" />
         </motion.div>
       </header>
