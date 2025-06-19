@@ -8,12 +8,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { motion } from "framer-motion"
-import { Sparkles, Star, RefreshCw, AlertCircle, Database, Check, X } from "lucide-react"
+import { Sparkles, Star, RefreshCw, AlertCircle, Database, Check, X, ChevronDown, Clock } from "lucide-react"
 import { getKids, registerKid, checkDatabaseSetup } from "./actions"
 import type { Kid } from "@/lib/supabase"
 
 export default function KidsRegistration() {
   const [kids, setKids] = useState<Kid[]>([])
+  const [showAllKids, setShowAllKids] = useState(false)
   const [nickname, setNickname] = useState("")
   const [age, setAge] = useState<number>(8)
   const [sex, setSex] = useState<"boy" | "girl" | "other" | null>(null)
@@ -45,6 +46,8 @@ export default function KidsRegistration() {
       const [kidsData, dbStatus] = await Promise.all([getKids(), checkDatabaseSetup()])
       setKids(kidsData)
       setDatabaseStatus(dbStatus)
+      // Reset to show only first 6 kids on reload
+      setShowAllKids(false)
     } catch (error) {
       console.error("Error loading data:", error)
       setError("Failed to load data")
@@ -97,7 +100,6 @@ export default function KidsRegistration() {
       if (result.error) {
         setError(result.error)
       } else if (result.success) {
-        setSuccess(`Welcome! Your registration number is ${result.registrationNumber}`)
         setNickname("")
         setAge(8)
         setSex(null)
@@ -125,6 +127,20 @@ export default function KidsRegistration() {
     const counter = databaseStatus.nextRegistrationNumber.toString().padStart(3, "0")
     return `K${year}${month}${day}${counter}`
   }
+
+  // Format time to 24h format (HH:MM)
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString)
+    return date.toLocaleTimeString("en-GB", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    })
+  }
+
+  // Get the kids to display (first 6 or all)
+  const displayedKids = showAllKids ? kids : kids.slice(0, 6)
+  const hasMoreKids = kids.length > 6
 
   if (isLoading) {
     return (
@@ -312,11 +328,14 @@ export default function KidsRegistration() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
         {/* Left side: List of registered kids */}
-        <div className="bg-white rounded-3xl p-6 shadow-lg border-4 border-yellow-300">
+        <div className="bg-white rounded-3xl p-6 shadow-lg border-4 border-yellow-300 flex flex-col">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl font-bold text-pink-500 flex items-center">
               <Star className="h-6 w-6 mr-2 text-yellow-400" />
               {kids.length} {kids.length === 1 ? "Kid" : "Kids"}
+              {!showAllKids && hasMoreKids && (
+                <span className="text-sm font-normal text-gray-500 ml-2">(showing {Math.min(6, kids.length)})</span>
+              )}
             </h2>
             <Button
               onClick={loadData}
@@ -331,30 +350,61 @@ export default function KidsRegistration() {
           {kids.length === 0 ? (
             <div className="text-center py-10 text-gray-500">No kids registered yet. Be the first one!</div>
           ) : (
-            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-              {kids.map((kid) => (
-                <motion.div
-                  key={kid.id}
-                  initial={{ x: -50, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-2xl border-2 border-blue-200"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="text-4xl flex-shrink-0 mt-1">
-                      {kid.sex === "boy" && "👦"}
-                      {kid.sex === "girl" && "👧"}
-                      {kid.sex === "other" && "🌈"}
+            <div className="flex flex-col flex-1">
+              <div className="space-y-3 flex-1 overflow-y-auto pr-2">
+                {displayedKids.map((kid) => (
+                  <motion.div
+                    key={kid.id}
+                    initial={{ x: -50, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-2xl border-2 border-blue-200"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className="text-4xl flex-shrink-0 mt-1">
+                        {kid.sex === "boy" && "👦"}
+                        {kid.sex === "girl" && "👧"}
+                        {kid.sex === "other" && "🌈"}
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg text-blue-600">{kid.nickname}</h3>
+                        <div className="text-sm text-gray-600">Age: {kid.age}</div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="bg-yellow-100 px-3 py-1 rounded-full text-sm font-mono font-bold text-yellow-800">
+                          {kid.registration_number}
+                        </div>
+                        <div className="text-xs text-gray-500 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {formatTime(kid.created_at)}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg text-blue-600">{kid.nickname}</h3>
-                      <div className="text-sm text-gray-600">Age: {kid.age}</div>
-                    </div>
-                    <div className="bg-yellow-100 px-3 py-1 rounded-full text-sm font-mono font-bold text-yellow-800">
-                      {kid.registration_number}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Show All / Show Less Button */}
+              {hasMoreKids && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <Button
+                    onClick={() => setShowAllKids(!showAllKids)}
+                    variant="outline"
+                    className="w-full text-pink-600 border-pink-300 hover:bg-pink-50"
+                  >
+                    {showAllKids ? (
+                      <>
+                        Show Less
+                        <ChevronDown className="h-4 w-4 ml-2 rotate-180" />
+                      </>
+                    ) : (
+                      <>
+                        Show All {kids.length} Kids
+                        <ChevronDown className="h-4 w-4 ml-2" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -462,11 +512,6 @@ export default function KidsRegistration() {
                 </Button>
               </div>
             </div>
-
-            {/* Success message */}
-            {success && (
-              <div className="bg-green-100 text-green-600 p-3 rounded-lg text-center font-bold">{success}</div>
-            )}
 
             {/* Error message */}
             {error && <div className="bg-red-100 text-red-600 p-3 rounded-lg text-center">{error}</div>}
