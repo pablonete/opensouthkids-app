@@ -6,8 +6,9 @@ import { useState, useEffect, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { motion } from "framer-motion"
-import { Sparkles, Star, RefreshCw, AlertCircle, Database } from "lucide-react"
+import { Sparkles, Star, RefreshCw, AlertCircle, Database, Check, X } from "lucide-react"
 import { getKids, registerKid, checkDatabaseSetup } from "./actions"
 import type { Kid } from "@/lib/supabase"
 
@@ -20,6 +21,12 @@ export default function KidsRegistration() {
   const [success, setSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(true)
   const [isPending, startTransition] = useTransition()
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [pendingRegistration, setPendingRegistration] = useState<{
+    nickname: string
+    age: number
+    sex: "boy" | "girl" | "other"
+  } | null>(null)
   const [databaseStatus, setDatabaseStatus] = useState({
     tablesExist: false,
     hasData: false,
@@ -51,10 +58,38 @@ export default function KidsRegistration() {
     setError("")
     setSuccess("")
 
+    // Validate input
+    if (!nickname?.trim()) {
+      setError("Please enter your nickname!")
+      return
+    }
+
+    if (!sex) {
+      setError("Please select if you're a boy, girl, or other!")
+      return
+    }
+
+    if (!age || age < 1 || age > 99) {
+      setError("Please enter a valid age!")
+      return
+    }
+
+    // Show confirmation modal instead of directly registering
+    setPendingRegistration({
+      nickname: nickname.trim(),
+      age,
+      sex,
+    })
+    setShowConfirmModal(true)
+  }
+
+  const handleConfirmRegistration = async () => {
+    if (!pendingRegistration) return
+
     const formData = new FormData()
-    formData.append("nickname", nickname)
-    formData.append("age", age.toString())
-    formData.append("sex", sex || "")
+    formData.append("nickname", pendingRegistration.nickname)
+    formData.append("age", pendingRegistration.age.toString())
+    formData.append("sex", pendingRegistration.sex)
 
     startTransition(async () => {
       const result = await registerKid(formData)
@@ -69,13 +104,32 @@ export default function KidsRegistration() {
         // Reload data
         await loadData()
       }
+
+      // Close modal and clear pending registration
+      setShowConfirmModal(false)
+      setPendingRegistration(null)
     })
+  }
+
+  const handleCancelRegistration = () => {
+    setShowConfirmModal(false)
+    setPendingRegistration(null)
+  }
+
+  // Generate preview registration number for the modal
+  const getPreviewRegistrationNumber = () => {
+    const date = new Date()
+    const year = date.getFullYear().toString().slice(-2)
+    const month = (date.getMonth() + 1).toString().padStart(2, "0")
+    const day = date.getDate().toString().padStart(2, "0")
+    const counter = databaseStatus.nextRegistrationNumber.toString().padStart(3, "0")
+    return `K${year}${month}${day}${counter}`
   }
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-purple-100 to-blue-100 flex items-center justify-center">
-        <div className="text-2xl text-purple-600 font-bold flex items-center gap-2">
+      <div className="min-h-screen bg-gradient-to-b from-green-100 to-blue-100 flex items-center justify-center">
+        <div className="text-2xl text-green-600 font-bold flex items-center gap-2">
           <RefreshCw className="h-6 w-6 animate-spin" />
           Loading...
         </div>
@@ -86,10 +140,10 @@ export default function KidsRegistration() {
   // Show setup instructions if database tables don't exist
   if (!databaseStatus.tablesExist) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-purple-100 to-blue-100 p-4 md:p-8">
+      <div className="min-h-screen bg-gradient-to-b from-green-100 to-blue-100 p-4 md:p-8">
         <div className="max-w-4xl mx-auto">
           <header className="text-center mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold text-purple-600 mb-2">OpenSouthKids 2025</h1>
+            <h1 className="text-4xl md:text-5xl font-bold text-green-600 mb-2">OpenSouthKids 2025</h1>
             <div className="text-xl text-blue-500 flex items-center justify-center gap-2">
               <Database className="h-5 w-5" />
               <span>Database Setup Required</span>
@@ -158,16 +212,23 @@ export default function KidsRegistration() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-purple-100 to-blue-100 p-4 md:p-8">
+    <div className="min-h-screen bg-gradient-to-b from-green-100 to-blue-100 p-4 md:p-8">
       <header className="text-center mb-8">
-        <motion.h1
-          className="text-4xl md:text-5xl font-bold text-purple-600 mb-2"
-          initial={{ scale: 0.5, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          OpenSouthKids 2025
-        </motion.h1>
+        <div className="flex items-center justify-center gap-4 mb-2">
+          <img
+            src="/placeholder.svg?height=60&width=60"
+            alt="OpenSouthCode Logo"
+            className="h-12 w-12 md:h-15 md:w-15"
+          />
+          <motion.h1
+            className="text-4xl md:text-5xl font-bold text-green-600"
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            OpenSouthKids 2025
+          </motion.h1>
+        </div>
         <motion.div
           className="text-xl text-blue-500 flex items-center justify-center gap-2"
           initial={{ y: -20, opacity: 0 }}
@@ -175,10 +236,79 @@ export default function KidsRegistration() {
           transition={{ delay: 0.3, duration: 0.5 }}
         >
           <Sparkles className="h-5 w-5" />
-          <span>Sign In Here!</span>
+          <span>This is public, do not write your full name</span>
           <Sparkles className="h-5 w-5" />
         </motion.div>
       </header>
+
+      {/* Confirmation Modal */}
+      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-green-600 text-center">Confirm Registration</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <p className="text-center text-gray-600">This is how your card will appear in the list:</p>
+
+            {/* Preview Card */}
+            {pendingRegistration && (
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-2xl border-2 border-blue-200"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="text-4xl flex-shrink-0 mt-1">
+                    {pendingRegistration.sex === "boy" && "👦"}
+                    {pendingRegistration.sex === "girl" && "👧"}
+                    {pendingRegistration.sex === "other" && "🌈"}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-lg text-blue-600">{pendingRegistration.nickname}</h3>
+                    <div className="text-sm text-gray-600">Age: {pendingRegistration.age}</div>
+                  </div>
+                  <div className="bg-yellow-100 px-3 py-1 rounded-full text-sm font-mono font-bold text-yellow-800">
+                    {getPreviewRegistrationNumber()}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            <p className="text-center text-sm text-gray-500">Is this information correct?</p>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-2">
+              <Button
+                onClick={handleCancelRegistration}
+                variant="outline"
+                className="flex-1 h-12 text-lg border-2 border-red-300 text-red-600 hover:bg-red-50"
+                disabled={isPending}
+              >
+                <X className="h-5 w-5 mr-2" />
+                Cancel
+              </Button>
+              <Button
+                onClick={handleConfirmRegistration}
+                className="flex-1 h-12 text-lg bg-green-500 hover:bg-green-600 text-white"
+                disabled={isPending}
+              >
+                {isPending ? (
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </div>
+                ) : (
+                  <>
+                    <Check className="h-5 w-5 mr-2" />
+                    Confirm
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
         {/* Left side: List of registered kids */}
@@ -348,14 +478,7 @@ export default function KidsRegistration() {
                 disabled={isPending}
                 className="w-full h-16 text-xl font-bold rounded-xl bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white disabled:opacity-50"
               >
-                {isPending ? (
-                  <div className="flex items-center gap-2">
-                    <RefreshCw className="h-5 w-5 animate-spin" />
-                    Registering...
-                  </div>
-                ) : (
-                  "Register Me! 🎉"
-                )}
+                Register Me! 🎉
               </Button>
             </motion.div>
           </form>
