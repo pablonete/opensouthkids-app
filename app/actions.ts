@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache"
 
 export async function getKids() {
   try {
-    const { data, error } = await supabase.from("kids").select("*").order("created_at", { ascending: true })
+    const { data, error } = await supabase.from("kids").select("*").order("created_at", { ascending: false })
 
     if (error) {
       // If table doesn't exist, return empty array instead of throwing error
