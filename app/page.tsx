@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { motion } from "framer-motion"
-import { Sparkles, Star, RefreshCw, AlertCircle, Database, Check, X, ChevronDown, Clock } from "lucide-react"
+import { Sparkles, Star, RefreshCw, AlertCircle, Database, X, ChevronDown, Clock } from "lucide-react"
 import { getKids, registerKid, checkDatabaseSetup } from "./actions"
 import type { Kid } from "@/lib/supabase"
 
@@ -257,6 +257,12 @@ export default function KidsRegistration() {
         </motion.div>
       </header>
 
+      {/* Conference Over Banner */}
+      <div className="bg-red-100 border-2 border-red-300 rounded-xl p-4 mb-8 text-center">
+        <div className="text-red-800 font-bold text-xl mb-2">🎉 Conference Complete! 🎉</div>
+        <div className="text-red-700 text-lg">The 2025 conference is over. See you in 2026!</div>
+      </div>
+
       {/* Confirmation Modal */}
       <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
         <DialogContent className="max-w-md">
@@ -306,20 +312,11 @@ export default function KidsRegistration() {
               </Button>
               <Button
                 onClick={handleConfirmRegistration}
-                className="flex-1 h-12 text-lg bg-green-500 hover:bg-green-600 text-white"
-                disabled={isPending}
+                className="flex-1 h-12 text-lg bg-gray-400 hover:bg-gray-400 text-white cursor-not-allowed"
+                disabled={true}
               >
-                {isPending ? (
-                  <div className="flex items-center gap-2">
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    Saving...
-                  </div>
-                ) : (
-                  <>
-                    <Check className="h-5 w-5 mr-2" />
-                    Confirm
-                  </>
-                )}
+                <X className="h-5 w-5 mr-2" />
+                Registration Closed
               </Button>
             </div>
           </div>
@@ -517,13 +514,13 @@ export default function KidsRegistration() {
             {error && <div className="bg-red-100 text-red-600 p-3 rounded-lg text-center">{error}</div>}
 
             {/* Submit button */}
-            <motion.div whileHover={{ scale: isPending ? 1 : 1.05 }} whileTap={{ scale: isPending ? 1 : 0.95 }}>
+            <motion.div whileHover={{ scale: 1 }} whileTap={{ scale: 1 }}>
               <Button
                 type="submit"
-                disabled={isPending}
-                className="w-full h-16 text-xl font-bold rounded-xl bg-gradient-to-r from-green-400 to-blue-500 hover:from-green-500 hover:to-blue-600 text-white disabled:opacity-50"
+                disabled={true}
+                className="w-full h-16 text-xl font-bold rounded-xl bg-gray-400 hover:bg-gray-400 text-white cursor-not-allowed opacity-75"
               >
-                Register Me! 🎉
+                Registration Closed 🔒
               </Button>
             </motion.div>
           </form>
