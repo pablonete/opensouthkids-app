@@ -11,6 +11,7 @@ import { motion } from "framer-motion"
 import { Sparkles, Star, RefreshCw, AlertCircle, Database, X, ChevronDown, Clock } from "lucide-react"
 import { getKids, registerKid, checkDatabaseSetup } from "./actions"
 import type { Kid } from "@/lib/supabase"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 
 export default function KidsRegistration() {
   const [kids, setKids] = useState<Kid[]>([])
@@ -136,6 +137,33 @@ export default function KidsRegistration() {
       minute: "2-digit",
       hour12: false,
     })
+  }
+
+  // Aggregate kids data for charts
+  const getAgeDistribution = () => {
+    const ageGroups: { [key: number]: number } = {}
+    kids.forEach((kid) => {
+      ageGroups[kid.age] = (ageGroups[kid.age] || 0) + 1
+    })
+    return Object.entries(ageGroups)
+      .map(([age, count]) => ({
+        age: `${age} years`,
+        ageNum: Number.parseInt(age),
+        count,
+      }))
+      .sort((a, b) => a.ageNum - b.ageNum)
+  }
+
+  const getSexDistribution = () => {
+    const sexGroups: { [key: string]: number } = { boy: 0, girl: 0, other: 0 }
+    kids.forEach((kid) => {
+      sexGroups[kid.sex] = (sexGroups[kid.sex] || 0) + 1
+    })
+    return [
+      { name: "Boys", value: sexGroups.boy, emoji: "👦", fill: "#3b82f6" },
+      { name: "Girls", value: sexGroups.girl, emoji: "👧", fill: "#ec4899" },
+      { name: "Other", value: sexGroups.other, emoji: "🌈", fill: "#8b5cf6" },
+    ].filter((item) => item.value > 0)
   }
 
   // Get the kids to display (first 6 or all)
@@ -526,6 +554,49 @@ export default function KidsRegistration() {
           </form>
         </div>
       </div>
+
+      {/* Charts Section */}
+      {kids.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto mt-8">
+          {/* Age Distribution Bar Chart */}
+          <div className="bg-white rounded-3xl p-6 shadow-lg border-4 border-blue-300">
+            <h3 className="text-2xl font-bold text-blue-600 mb-4 text-center">Age Distribution</h3>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={getAgeDistribution()} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="age" />
+                  <YAxis />
+                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Gender Distribution Pie Chart */}
+          <div className="bg-white rounded-3xl p-6 shadow-lg border-4 border-pink-300">
+            <h3 className="text-2xl font-bold text-pink-600 mb-4 text-center">Gender Distribution</h3>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={getSexDistribution()}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    dataKey="value"
+                    label={({ name, value, percent }) => `${name}: ${value} (${(percent * 100).toFixed(0)}%)`}
+                  >
+                    {getSexDistribution().map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
